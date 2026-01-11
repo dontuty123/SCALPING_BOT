@@ -72,8 +72,9 @@ def main() -> None:
             candles_1m = market_data.fetch_closed_klines(symbol, "1m", limit=limit)
             candles_5m = market_data.fetch_closed_klines(symbol, "5m", limit=limit)
 
-            if candles_1m is None or candles_5m is None:
-                logger.info("Skipping cycle; candles not ready")
+            # 1m must be ready; fallback drops forming candle inside fetch.
+            if not candles_1m["timestamp"]:
+                logger.info("Skipping cycle: 1m candle not ready")
                 _sleep_until_next_minute()
                 continue
 

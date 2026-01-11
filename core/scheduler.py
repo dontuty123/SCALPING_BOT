@@ -39,8 +39,8 @@ class Scheduler:
                 candles_1m = self.market_data.fetch_closed_klines(self.symbol, "1m", limit=self.klines_limit)
                 candles_5m = self.market_data.fetch_closed_klines(self.symbol, "5m", limit=self.klines_limit)
 
-                if candles_1m is None or candles_5m is None:
-                    self.logger.info("Skipping cycle, latest candle not confirmed closed")
+                if not candles_1m["timestamp"]:
+                    self.logger.info("Skipping cycle: 1m candle not ready")
                     continue
 
                 self._log_candle_snapshot("1m", candles_1m)

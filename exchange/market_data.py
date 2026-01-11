@@ -26,12 +26,9 @@ class MarketDataService:
 
     def fetch_closed_klines(
         self, symbol: str, interval: Interval, limit: int = 200
-    ) -> Optional[Dict[str, List[Any]]]:
+    ) -> Dict[str, List[Any]]:
         raw = self.client.get_klines(symbol, interval, limit)
         normalized = self._normalize_klines(raw, interval)
-        if normalized is None:
-            self.logger.info("Latest candle not confirmed closed yet, skipping fetch result for %s %s", symbol, interval)
-            return None
         self.logger.info(
             "Fetched %s klines for %s interval %s (latest close=%s)",
             len(normalized["close"]),
@@ -41,7 +38,7 @@ class MarketDataService:
         )
         return normalized
 
-    def _normalize_klines(self, klines: Any, interval: Interval) -> Optional[Dict[str, List[Any]]]:
+    def _normalize_klines(self, klines: Any, interval: Interval) -> Dict[str, List[Any]]:
         if not isinstance(klines, list) or not klines:
             raise ValueError("Klines response is empty or invalid")
 
@@ -79,7 +76,18 @@ class MarketDataService:
 
         safety_margin = getattr(settings, "SAFETY_MARGIN_MS", 1500)
         if not self._is_closed(timestamps[-1], now_ms, safety_margin):
-            return None
+            # Drop the last (forming) candle, keep previous closed candles
+            opens = opens[:-1]
+            highs = highs[:-1]
+            lows = lows[:-1]
+            closes = closes[:-1]
+            volumes = volumes[:-1]
+            timestamps = timestamps[:-1]
+            open_times = open_times[:-1]
+            self.logger.info("[%s] using previous closed candle", interval)
+
+        if not timestamps:
+            return {"open": [], "high": [], "low": [], "close": [], "volume": [], "timestamp": []}
 
         return {
             "open": opens,
